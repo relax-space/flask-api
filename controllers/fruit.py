@@ -1,19 +1,7 @@
-from turtle import update
 
-from flask import Flask, jsonify, request
-from flask_restful import abort
 
-data = [
-    {
-        'id': 1,
-        'name': 'apple',
-        'price': 1,
-    }, {
-        'id': 2,
-        'name': 'pear',
-        'price': 2,
-    }
-]
+from flask import Flask, abort, jsonify, request
+from models.fruit import Fruit
 
 
 class FruitController:
@@ -28,13 +16,15 @@ class FruitController:
                          view_func=self.delete, methods=['DELETE'])
         app.add_url_rule(f'{resource_name}/<int:id>',
                          view_func=self.update, methods=['PUT'])
-        
 
     def get_all(self):
-        return jsonify(data), 200
+        req_data = request.values
+        offset = req_data.get('offset', 0)
+        limit = req_data.get('limit', 20)
+        return jsonify(Fruit.get_all(offset, limit)), 200
 
     def get(self, id: int):
-        fruits = [d for d in data if d.get('id') == id]
+        fruits = Fruit.get(id)
         if len(fruits) == 0:
             abort(404)
         return jsonify(fruits[0]), 200
@@ -43,26 +33,16 @@ class FruitController:
         req_data = request.json
         if not req_data:
             abort(400)
-        req_data['id'] = data[-1]['id']+1
-        data.append(req_data)
-        return jsonify(req_data), 201
+        resp = Fruit.insert(req_data)
+        return jsonify(resp), 201
 
     def delete(self, id: int):
-        length = len(data)
-        #  倒序删除
-        for i in range(length-1, -1, -1):
-            if data[i]['id'] == id:
-                del data[i]
-                break
+        Fruit.delete(id)
         return '', 204
 
     def update(self, id: int):
         req_data = request.json
         if not req_data:
             abort(400)
-        req_data.update({'id':id})
-        for i in data:
-            if i['id'] == id:
-                i.update(req_data)
-                break
+        Fruit.update(id, req_data)
         return '', 204
